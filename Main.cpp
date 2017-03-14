@@ -48,7 +48,7 @@ public:
 		{
 			Pos.P1 += 5;
 		}
-
+		//プレイヤー2		
 		if (Input::KeyUp.pressed && Player.P2.pos.y >= 0) 
 		{
 			Pos.P2 -= 5;
@@ -57,7 +57,7 @@ public:
 		{
 			Pos.P2 += 5;
 		}
-
+		//ゲーム終了		
 		if (t >= 3000) 
 		{
 			return false;
@@ -74,7 +74,7 @@ public:
 		SoundAsset::Register(L"bar", L"Example/BarCollision.mp3");
 		SoundAsset::Register(L"end", L"Example/GameOver.mp3");
 
-
+		
 		switch (type) {
 		case 0:
 			SoundAsset(L"wall").playMulti();
