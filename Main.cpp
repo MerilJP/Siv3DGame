@@ -1,4 +1,4 @@
-﻿#include <Siv3D.hpp>
+#include <Siv3D.hpp>
 
 class Siv3DGame
 {
@@ -23,7 +23,7 @@ public:
 	}
 
 	//デストラクタ
-	~Siv3DGame() 
+	~Siv3DGame()
 	{
 	}
 
@@ -34,37 +34,120 @@ public:
 		FontAsset(L"status")(L"FPS : ", Profiler::FPS(), L" \nTIMER : ", Timer.ms(), L"ms\n").draw();
 	}
 
+	//ゲームタイトルの関数
+	inline bool GameTitle() 
+	{
+		bool ret = true;
+		//初期化
+		m_ball.setPos(Window::Center().x, Window::Center().y);
+		m_ballSpeed = Vec2(dSpeed, 0);
+
+		FontAsset::Register(L"title", 30, Typeface::Default);
+		FontAsset(L"title")(L"PONG\n\n").drawCenter(Window::Center().x,150);
+
+		FontAsset(L"title")(L"[Enter]でスタート").drawCenter(Window::Center().x, 300);
+
+		return ret;
+	}
+
+	//ゲームプレイ中の関数
+	inline bool GamePlay()
+	{
+		const bool cP1 = Player.P1.intersects(m_ball);
+		const bool cP2 = Player.P2.intersects(m_ball);
+
+		bool ret = true;
+
+		Player.P1.setCenter(20, Pos.P1);
+		Player.P2.setCenter(Window::Width() - 20, Pos.P2);
+
+		m_ball.moveBy(m_ballSpeed);
+
+		Collision();
+
+		Restart();
+		m_ball.draw();
+		Player.P1.draw(cP1 ? Palette::Red : Palette::White);
+		Player.P2.draw(cP2 ? Palette::Red : Palette::White);
+
+		if (!PlayerMovement() || m_Score.left >= 5 || m_Score.right >= 5) {
+			ret = false;
+		}
+		return ret;
+
+	}
+
+	//ゲームオーバーシーンの関数
+	inline void GameOver()
+	{
+		FontAsset::Register(L"gameover", 30, Typeface::Default);
+		FontAsset(L"gameover")(L"左:", m_Score.left, L"		右:", m_Score.right).drawCenter(Window::Center().x, 150);
+		FontAsset(L"gameover")(L"[Enter]でタイトルに戻る").drawCenter(Window::Center().x, 300);
+		//ボールの位置を戻す
+		m_ball.setPos(Window::Center().x, Window::Center().y);
+	}
+
+private:
 	//入力関数
 	inline bool PlayerMovement() {
 
+		bool ret = true;
+
 		const int32 t = Input::KeyEscape.pressedDuration;
+		
 
 		//プレイヤー1
-		if (Input::KeyW.pressed && Player.P1.pos.y >= 0) 
+		if (Input::KeyW.pressed && Player.P1.pos.y >= 0)
 		{
 			Pos.P1 -= 5;
 		}
-		else if (Input::KeyS.pressed && (Player.P1.pos.y + Player.P1.size.y) <= Window::Height()) 
+		else if (Input::KeyS.pressed && (Player.P1.pos.y + Player.P1.size.y) <= Window::Height())
 		{
 			Pos.P1 += 5;
 		}
 		//プレイヤー2		
-		if (Input::KeyUp.pressed && Player.P2.pos.y >= 0) 
+		if (Input::KeyUp.pressed && Player.P2.pos.y >= 0)
 		{
 			Pos.P2 -= 5;
 		}
-		else if (Input::KeyDown.pressed && (Player.P2.pos.y + Player.P2.size.y) <= Window::Height()) 
+		else if (Input::KeyDown.pressed && (Player.P2.pos.y + Player.P2.size.y) <= Window::Height())
 		{
 			Pos.P2 += 5;
 		}
-		//ゲーム終了		
-		if (t >= 3000) 
-		{
-			return false;
+		//ゲーム終了	
+		if (t > 0) {
+			FontAsset::Register(L"end", 30, Typeface::Default);
+			FontAsset(L"end")(L"Exit", String(Min(t / 1000, 3), L'.'))
+				.drawCenter(Window::Center().x, Window::Center().y - 100, AlphaF(Min(t / 1000.0, 1.0)));
+			if (t >= 3000)
+			{
+				ret = false;
+			}
 		}
-		
-		return true;
 
+
+		return ret;
+
+	}
+
+	//リスタート関数
+	inline void Restart() {
+		const int32 t = Input::KeyR.pressedDuration;
+
+		if (t > 0)
+		{
+			FontAsset::Register(L"restart", 30, Typeface::Default);
+			FontAsset(L"restart")(L"Ready", String(Min(t / 1000, 3), L'.'))
+				.drawCenter(Window::Center().x, Window::Center().y - 100, AlphaF(Min(t / 1000.0, 1.0)));
+			if (t >= 3000)
+			{
+				m_ball.setPos(Window::Center().x, Window::Center().y);
+				dSpeed = 5.0;
+				m_ballSpeed = Vec2(-dSpeed, 0);
+				bGameEnd = false;
+			}
+
+		}
 	}
 
 	//音声関数
@@ -74,7 +157,7 @@ public:
 		SoundAsset::Register(L"bar", L"Example/BarCollision.mp3");
 		SoundAsset::Register(L"end", L"Example/GameOver.mp3");
 
-		
+
 		switch (type) {
 		case 0:
 			SoundAsset(L"wall").playMulti();
@@ -87,26 +170,6 @@ public:
 		}
 	}
 
-	//リスタート関数
-	inline void Restart() {
-		const int32 t = Input::KeyR.pressedDuration;
-
-		if (t > 0) 
-		{
-			FontAsset::Register(L"restart", 30, Typeface::Default);
-			FontAsset(L"restart")(L"Ready",String(Min(t / 1000,3),L'.'))
-				.drawCenter(Window::Center().x,Window::Center().y - 100,AlphaF(Min(t/ 1000.0,1.0)));
-			if (t >= 3000) 
-			{
-				m_ball.setPos(Window::Center().x,Window::Center().y);
-				dSpeed = 5.0;
-				m_ballSpeed = Vec2(-dSpeed, 0);
-				bGameEnd = false;
-			}
-
-		}
-	}
-	
 	//衝突関数
 	inline void Collision() {
 
@@ -136,7 +199,7 @@ public:
 		//左の壁
 		if (m_ball.x < 0 && m_ballSpeed.x <  0)
 		{
-			if (!bGameEnd) 
+			if (!bGameEnd)
 			{
 				m_Score.right++;
 				SoundPlay(3);
@@ -164,49 +227,14 @@ public:
 		}
 	}
 
-	//ゲーム終了関数
-	inline bool GameOver() {
-		if (m_Score.left >= 5 || m_Score.right >= 5)
-		{
-			return false;
-		}
-		return true;
-	}
-
-	//メイン関数
-	inline bool GameUpdate() 
-	{
-		bool ret = true;
-
-		Player.P1.setCenter(20, Pos.P1);
-		Player.P2.setCenter(Window::Width() - 20, Pos.P2);
-
-		m_ball.moveBy(m_ballSpeed);
-	
-		Collision();
-
-		Restart();
-		m_ball.draw();
-		Player.P1.draw();
-		Player.P2.draw();
-
-		if (!GameOver() || !PlayerMovement()) {
-			ret = false;
-		}
-		return ret;
-		
-	}
-
-private:
-
 	//得点
-	struct Score 
+	struct Score
 	{
 		int left = 0;
 		int right = 0;
 	};
 
-	//プレイヤー
+	//プレイヤー 座標
 	struct Controller
 	{
 		Rect P1;
@@ -227,7 +255,7 @@ private:
 
 	//時間
 	const Stopwatch Timer;
-	
+
 	Controller Player;
 	Circle m_ball;
 	Vec2 m_ballSpeed;
@@ -237,15 +265,14 @@ private:
 	Coordinate Pos;
 
 	//ゲームタイトル
-	const String sGameTitle = L"Siv3D Application";
+	const String sGameTitle = L"Siv3DGame PONG";
 	//クライアントサイズ
 	const int nClientWidth = 640;
 	const int nClientHeight = 480;
 
-	
 };
 
-enum class GameScene 
+enum class GameScene
 {
 	Title,
 	Playing,
@@ -257,7 +284,7 @@ enum class GameScene
 void Main()
 {
 
-	Siv3DGame *GamePlay = new Siv3DGame();
+	Siv3DGame *GameData = new Siv3DGame();
 	GameScene gameScene = GameScene::Title;
 
 	while (System::Update())
@@ -266,27 +293,26 @@ void Main()
 		{
 #pragma region タイトル
 		case GameScene::Title:
+			GameData->GameTitle();
 			if (Input::KeyEnter.clicked) gameScene = GameScene::Playing;
 			if (Input::KeyEscape.clicked) System::Exit();
 			break;
-#pragma endregion
+#pragma endregion タイトルシーン
 #pragma region プレイ中
 		case GameScene::Playing:
-			if (!GamePlay->GameUpdate()) gameScene = GameScene::GameOver;
+			if (!GameData->GamePlay()) gameScene = GameScene::GameOver;
 			break;
-#pragma endregion
+#pragma endregion ゲームプレイシーン
 #pragma region ゲームオーバー
 		case GameScene::GameOver:
-			if (Input::KeyEnter.clicked) gameScene = GameScene::Title;
+			GameData->GameOver();	
+			if(Input::KeyEnter.clicked) gameScene = GameScene::Title;
 			break;
-#pragma endregion
+#pragma endregion ゲームオーバーシーン
 		}
-
-
-
 #ifdef _DEBUG
-		GamePlay->ClientStatus();		
+		GameData->ClientStatus();
 #endif
-	
+
 	}
 }
