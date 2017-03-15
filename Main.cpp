@@ -15,6 +15,7 @@ public:
 		Window::Centering();
 		m_ball.setPos(Window::Center().x, Window::Center().y);
 		m_ballSpeed = Vec2(dSpeed, 0);
+		AssetRegister();
 
 #ifdef _DEBUG
 #else
@@ -27,25 +28,36 @@ public:
 	{
 	}
 
-	//蔵情報出力関数
+	//クライアント情報出力関数
 	inline void ClientStatus() const throw()
 	{
-		FontAsset::Register(L"status", 10, Typeface::Default);
 		FontAsset(L"status")(L"FPS : ", Profiler::FPS(), L" \nTIMER : ", Timer.ms(), L"ms\n").draw();
 	}
 
 	//ゲームタイトルの関数
-	inline bool GameTitle() 
+	inline bool GameTitle()
 	{
 		bool ret = true;
+	
 		//初期化
 		m_ball.setPos(Window::Center().x, Window::Center().y);
-		m_ballSpeed = Vec2(dSpeed, 0);
+		m_Score = Score();
+		Pos = Coordinate();
+		bGameEnd = false;
+		switch (Random(0, 1))
+		{
+		case 0:
+			m_ballSpeed = Vec2(+dSpeed, 0);
+			break;
+		default:
+			m_ballSpeed = Vec2(-dSpeed, 0);
+			break;
+		}
 
-		FontAsset::Register(L"title", 30, Typeface::Default);
-		FontAsset(L"title")(L"PONG\n\n").drawCenter(Window::Center().x,150);
+		FontAsset(L"title")(L"PONG\n\n").drawCenter(Window::Center().x, 150);
+		FontAsset(L"title")(L"[Enter]でスタート\n").drawCenter(Window::Center().x, 300);
 
-		FontAsset(L"title")(L"[Enter]でスタート").drawCenter(Window::Center().x, 300);
+		FontAsset(L"description")(L"\n左:WSキーで操作		 右:↑↓キーで操作").drawCenter(Window::Center().x, Window::Height() - 100);
 
 		return ret;
 	}
@@ -74,27 +86,48 @@ public:
 			ret = false;
 		}
 		return ret;
-
 	}
 
-	//ゲームオーバーシーンの関数
+	//ゲームオーバーの関数
 	inline void GameOver()
 	{
-		FontAsset::Register(L"gameover", 30, Typeface::Default);
-		FontAsset(L"gameover")(L"左:", m_Score.left, L"		右:", m_Score.right).drawCenter(Window::Center().x, 150);
+		FontAsset(L"gameover")(L"ゲームセット\n左:", m_Score.left, L"		右:", m_Score.right).drawCenter(Window::Center().x, 150);
 		FontAsset(L"gameover")(L"[Enter]でタイトルに戻る").drawCenter(Window::Center().x, 300);
 		//ボールの位置を戻す
 		m_ball.setPos(Window::Center().x, Window::Center().y);
 	}
 
 private:
+	//アセット登録
+	inline void AssetRegister() const throw()
+	{
+		FontAsset::Register(L"status", 10, Typeface::Default);
+
+		FontAsset::Register(L"title", 30, Typeface::Default);
+		FontAsset::Register(L"description", 10, Typeface::Default);
+
+		FontAsset::Register(L"gameover", 30, Typeface::Default);
+
+		FontAsset::Register(L"restart", 30, Typeface::Default);
+
+		FontAsset::Register(L"end", 30, Typeface::Default);
+
+		FontAsset::Register(L"score", 30, Typeface::Default);
+
+
+		SoundAsset::Register(L"wall", L"/1000");
+		SoundAsset::Register(L"bar", L"/1001");
+		SoundAsset::Register(L"end", L"/1002");
+
+	}
+
 	//入力関数
 	inline bool PlayerMovement() {
 
 		bool ret = true;
 
 		const int32 t = Input::KeyEscape.pressedDuration;
-		
+
 
 		//プレイヤー1
 		if (Input::KeyW.pressed && Player.P1.pos.y >= 0)
@@ -115,10 +148,9 @@ private:
 			Pos.P2 += 5;
 		}
 		//ゲーム終了	
-		if (t > 0) {
-			FontAsset::Register(L"end", 30, Typeface::Default);
+		if (t > 0 ) {
 			FontAsset(L"end")(L"Exit", String(Min(t / 1000, 3), L'.'))
-				.drawCenter(Window::Center().x, Window::Center().y - 100, AlphaF(Min(t / 1000.0, 1.0)));
+				.drawCenter(Window::Center().x, Window::Center().y - 50, AlphaF(Min(t / 1000.0, 1.0)));
 			if (t >= 3000)
 			{
 				ret = false;
@@ -136,37 +168,43 @@ private:
 
 		if (t > 0)
 		{
-			FontAsset::Register(L"restart", 30, Typeface::Default);
-			FontAsset(L"restart")(L"Ready", String(Min(t / 1000, 3), L'.'))
-				.drawCenter(Window::Center().x, Window::Center().y - 100, AlphaF(Min(t / 1000.0, 1.0)));
-			if (t >= 3000)
+			
+			FontAsset(L"restart")(L"Ready", String(Min(t / 500, 3), L'.'))
+				.drawCenter(Window::Center().x, Window::Center().y - 50, AlphaF(Min(t / 1000.0, 1.0)));
+			if (t >= 1500)
 			{
 				m_ball.setPos(Window::Center().x, Window::Center().y);
 				dSpeed = 5.0;
-				m_ballSpeed = Vec2(-dSpeed, 0);
+				switch (Random(0,1))
+				{
+				case 0:
+					m_ballSpeed = Vec2(+dSpeed, 0);
+					break;
+				default:
+					m_ballSpeed = Vec2(-dSpeed, 0);
+					break;
+				}
 				bGameEnd = false;
 			}
 
 		}
 	}
 
-	//音声関数
+	//効果音関数
 	inline void SoundPlay(int type) const throw()
 	{
-		SoundAsset::Register(L"wall", L"Example/WallCollision.mp3");
-		SoundAsset::Register(L"bar", L"Example/BarCollision.mp3");
-		SoundAsset::Register(L"end", L"Example/GameOver.mp3");
 
 
 		switch (type) {
 		case 0:
-			SoundAsset(L"wall").playMulti();
+			SoundAsset(L"wall").playMulti(0.4);
 			break;
 		case 1:
 			SoundAsset(L"bar").play();
 			break;
 		default:
 			SoundAsset(L"end").play();
+			break;
 		}
 	}
 
@@ -202,11 +240,10 @@ private:
 			if (!bGameEnd)
 			{
 				m_Score.right++;
-				SoundPlay(3);
+				SoundPlay(2);
 			}
-			FontAsset::Register(L"score", 10, Typeface::Default);
-			FontAsset(L"scre")(L"左:", m_Score.left, L"		右:", m_Score.right,
-				L"\nR長押しでリスタート").drawCenter(Window::Center().x, 50);
+			FontAsset(L"score")(L"	左:", m_Score.left, L"		右:", m_Score.right,
+				L"\nR長押しでリスタート").drawCenter(Window::Center().x, 100);
 
 			bGameEnd = true;
 		}
@@ -216,12 +253,10 @@ private:
 			if (!bGameEnd)
 			{
 				m_Score.left++;
-				SoundPlay(3);
+				SoundPlay(2);
 			}
-
-			FontAsset::Register(L"score", 10, Typeface::Default);
-			FontAsset(L"scre")(L"左:", m_Score.left, L"		右:", m_Score.right,
-				L"\nR長押しでリスタート").drawCenter(Window::Center().x, 50);
+			FontAsset(L"score")(L"	左:", m_Score.left, L"		右:", m_Score.right,
+				L"\nR長押しでリスタート").drawCenter(Window::Center().x, 100);
 
 			bGameEnd = true;
 		}
@@ -230,8 +265,11 @@ private:
 	//得点
 	struct Score
 	{
-		int left = 0;
-		int right = 0;
+		int left;
+		int right;
+		Score() : left(0), right(0) 
+		{
+		}
 	};
 
 	//プレイヤー 座標
@@ -279,14 +317,19 @@ enum class GameScene
 	GameOver
 };
 
-
-
 void Main()
 {
 
 	Siv3DGame *GameData = new Siv3DGame();
 	GameScene gameScene = GameScene::Title;
 
+	const Sound TitleBGM(L"/1003");
+	const Sound PlayBGM(L"/1004");
+	const Sound EndBGM(L"/1005");
+	TitleBGM.setLoop(true);
+	PlayBGM.setLoop(true);
+
+	TitleBGM.play();
 	while (System::Update())
 	{
 		switch (gameScene)
@@ -294,19 +337,34 @@ void Main()
 #pragma region タイトル
 		case GameScene::Title:
 			GameData->GameTitle();
-			if (Input::KeyEnter.clicked) gameScene = GameScene::Playing;
+			if (Input::KeyEnter.clicked) 
+			{
+				TitleBGM.stop();
+				gameScene = GameScene::Playing; 
+				PlayBGM.play();
+			}
 			if (Input::KeyEscape.clicked) System::Exit();
 			break;
 #pragma endregion タイトルシーン
 #pragma region プレイ中
 		case GameScene::Playing:
-			if (!GameData->GamePlay()) gameScene = GameScene::GameOver;
+			if (!GameData->GamePlay()) 
+			{
+				PlayBGM.stop();
+				gameScene = GameScene::GameOver;
+				EndBGM.play();
+			}
 			break;
 #pragma endregion ゲームプレイシーン
 #pragma region ゲームオーバー
 		case GameScene::GameOver:
-			GameData->GameOver();	
-			if(Input::KeyEnter.clicked) gameScene = GameScene::Title;
+			GameData->GameOver();
+			if (Input::KeyEnter.clicked)
+			{
+				EndBGM.stop();
+				gameScene = GameScene::Title;
+				TitleBGM.play();
+			}
 			break;
 #pragma endregion ゲームオーバーシーン
 		}
@@ -315,4 +373,5 @@ void Main()
 #endif
 
 	}
+
 }
